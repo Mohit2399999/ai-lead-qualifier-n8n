@@ -1,204 +1,76 @@
-# ai-lead-qualifier-n8n
-AI-powered lead qualification workflow built with n8n and Google Gemini. Scores inbound leads, logs them to Google Sheets, sends auto-replies and alerts the owner about hot leads.
-{
-  "name": "AI Lead Qualifier (Portfolio Demo)",
-  "nodes": [
-    {
-      "parameters": {
-        "content": "## AI Lead Qualifier\n\n**What it does:** A website contact form sends each new lead to AI, which scores it hot / warm / cold, writes a one-line summary and drafts a personal reply. Every lead is logged in Google Sheets, every lead gets an instant reply, and hot leads trigger an alert email to the business owner.\n\n**Setup:**\n1. Google Gemini node: add a free API key from Google AI Studio.\n2. Google Sheets node: connect your Google account and pick a sheet with these headers in row 1: Date, Name, Email, Company, Budget, Message, Score, Reason, Summary\n3. Both Gmail nodes: connect Gmail. In \"Alert Owner\", replace you@example.com with your email.\n4. Click \"Test workflow\", open the form URL, and submit a test lead.",
-        "height": 420,
-        "width": 520
-      },
-      "id": "a1b2c3d4-0001-4000-8000-000000000001",
-      "name": "Read Me",
-      "type": "n8n-nodes-base.stickyNote",
-      "typeVersion": 1,
-      "position": [-220, -500]
-    },
-    {
-      "parameters": {
-        "formTitle": "Work With Us",
-        "formDescription": "Tell us about your project and we'll get back to you within 24 hours.",
-        "formFields": {
-          "values": [
-            { "fieldLabel": "Name", "requiredField": true },
-            { "fieldLabel": "Email", "fieldType": "email", "requiredField": true },
-            { "fieldLabel": "Company" },
-            {
-              "fieldLabel": "Budget",
-              "fieldType": "dropdown",
-              "fieldOptions": {
-                "values": [
-                  { "option": "Under $500" },
-                  { "option": "$500 - $2,000" },
-                  { "option": "$2,000 - $10,000" },
-                  { "option": "Over $10,000" }
-                ]
-              },
-              "requiredField": true
-            },
-            { "fieldLabel": "Message", "fieldType": "textarea", "requiredField": true }
-          ]
-        },
-        "options": {}
-      },
-      "id": "a1b2c3d4-0002-4000-8000-000000000002",
-      "name": "Contact Form",
-      "type": "n8n-nodes-base.formTrigger",
-      "typeVersion": 2.2,
-      "position": [0, 0],
-      "webhookId": "7e4c1f0a-2b3d-4e5f-8a9b-0c1d2e3f4a5b"
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=You are a sales assistant for a small service business. Score this inbound lead and draft a reply.\n\nLead:\nName: {{ $json.Name }}\nCompany: {{ $json.Company }}\nBudget: {{ $json.Budget }}\nMessage: {{ $json.Message }}\n\nScoring rules:\n- hot: clear project, budget $2,000 or more, wants to start soon\n- warm: real interest but vague scope or smaller budget\n- cold: spam, no real project, or no budget\n\nReturn:\n- score: one of hot, warm, cold\n- reason: one sentence explaining the score\n- summary: one sentence describing what the lead wants\n- reply: a friendly, professional reply email to the lead (3-4 sentences, plain text, thank them by first name, mention their project specifically, suggest a short call, sign off as \"The Team\")",
-        "hasOutputParser": true
-      },
-      "id": "a1b2c3d4-0003-4000-8000-000000000003",
-      "name": "AI Lead Scoring",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.5,
-      "position": [240, 0]
-    },
-    {
-      "parameters": {
-        "modelName": "models/gemini-3.8-flash",
-        "options": {}
-      },
-      "id": "a1b2c3d4-0004-4000-8000-000000000004",
-      "name": "Google Gemini",
-      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
-      "typeVersion": 1,
-      "position": [180, 220]
-    },
-    {
-      "parameters": {
-        "jsonSchemaExample": "{\n  \"score\": \"hot\",\n  \"reason\": \"Clear project scope with a $5,000 budget and a start date next month.\",\n  \"summary\": \"Wants an automated onboarding flow for their online store.\",\n  \"reply\": \"Hi Sam, thanks for reaching out...\"\n}"
-      },
-      "id": "a1b2c3d4-0005-4000-8000-000000000005",
-      "name": "Structured Output",
-      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
-      "typeVersion": 1.2,
-      "position": [360, 220]
-    },
-    {
-      "parameters": {
-        "operation": "append",
-        "documentId": { "__rl": true, "mode": "list", "value": "" },
-        "sheetName": { "__rl": true, "mode": "list", "value": "" },
-        "columns": {
-          "mappingMode": "defineBelow",
-          "value": {
-            "Date": "={{ $now.toFormat('yyyy-MM-dd HH:mm') }}",
-            "Name": "={{ $('Contact Form').item.json.Name }}",
-            "Email": "={{ $('Contact Form').item.json.Email }}",
-            "Company": "={{ $('Contact Form').item.json.Company }}",
-            "Budget": "={{ $('Contact Form').item.json.Budget }}",
-            "Message": "={{ $('Contact Form').item.json.Message }}",
-            "Score": "={{ $json.output.score }}",
-            "Reason": "={{ $json.output.reason }}",
-            "Summary": "={{ $json.output.summary }}"
-          },
-          "matchingColumns": [],
-          "schema": [
-            { "id": "Date", "displayName": "Date", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Name", "displayName": "Name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Email", "displayName": "Email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Company", "displayName": "Company", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Budget", "displayName": "Budget", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Message", "displayName": "Message", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Score", "displayName": "Score", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Reason", "displayName": "Reason", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true },
-            { "id": "Summary", "displayName": "Summary", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true }
-          ]
-        },
-        "options": {}
-      },
-      "id": "a1b2c3d4-0006-4000-8000-000000000006",
-      "name": "Log Lead in Sheet",
-      "type": "n8n-nodes-base.googleSheets",
-      "typeVersion": 4.5,
-      "position": [560, 0]
-    },
-    {
-      "parameters": {
-        "sendTo": "={{ $('Contact Form').item.json.Email }}",
-        "subject": "=Thanks for reaching out, {{ $('Contact Form').item.json.Name }}",
-        "emailType": "text",
-        "message": "={{ $('AI Lead Scoring').item.json.output.reply }}",
-        "options": { "appendAttribution": false }
-      },
-      "id": "a1b2c3d4-0007-4000-8000-000000000007",
-      "name": "Auto-Reply to Lead",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [800, -140]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "loose", "version": 2 },
-          "conditions": [
-            {
-              "id": "b7c8d9e0-1111-4222-8333-444455556666",
-              "leftValue": "={{ $('AI Lead Scoring').item.json.output.score }}",
-              "rightValue": "hot",
-              "operator": { "type": "string", "operation": "equals" }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "id": "a1b2c3d4-0008-4000-8000-000000000008",
-      "name": "Is Hot Lead?",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.2,
-      "position": [800, 120]
-    },
-    {
-      "parameters": {
-        "sendTo": "you@example.com",
-        "subject": "=HOT LEAD: {{ $('Contact Form').item.json.Name }} ({{ $('Contact Form').item.json.Budget }})",
-        "emailType": "text",
-        "message": "=New hot lead just came in.\n\nName: {{ $('Contact Form').item.json.Name }}\nEmail: {{ $('Contact Form').item.json.Email }}\nCompany: {{ $('Contact Form').item.json.Company }}\nBudget: {{ $('Contact Form').item.json.Budget }}\n\nSummary: {{ $('AI Lead Scoring').item.json.output.summary }}\nWhy it's hot: {{ $('AI Lead Scoring').item.json.output.reason }}\n\nOriginal message:\n{{ $('Contact Form').item.json.Message }}",
-        "options": { "appendAttribution": false }
-      },
-      "id": "a1b2c3d4-0009-4000-8000-000000000009",
-      "name": "Alert Owner",
-      "type": "n8n-nodes-base.gmail",
-      "typeVersion": 2.1,
-      "position": [1040, 100]
-    }
-  ],
-  "connections": {
-    "Contact Form": {
-      "main": [[{ "node": "AI Lead Scoring", "type": "main", "index": 0 }]]
-    },
-    "Google Gemini": {
-      "ai_languageModel": [[{ "node": "AI Lead Scoring", "type": "ai_languageModel", "index": 0 }]]
-    },
-    "Structured Output": {
-      "ai_outputParser": [[{ "node": "AI Lead Scoring", "type": "ai_outputParser", "index": 0 }]]
-    },
-    "AI Lead Scoring": {
-      "main": [[{ "node": "Log Lead in Sheet", "type": "main", "index": 0 }]]
-    },
-    "Log Lead in Sheet": {
-      "main": [[
-        { "node": "Auto-Reply to Lead", "type": "main", "index": 0 },
-        { "node": "Is Hot Lead?", "type": "main", "index": 0 }
-      ]]
-    },
-    "Is Hot Lead?": {
-      "main": [
-        [{ "node": "Alert Owner", "type": "main", "index": 0 }],
-        []
-      ]
-    }
-  },
-  "pinData": {},
-  "settings": { "executionOrder": "v1" },
-  "active": false
-}
+# AI Lead Qualifier (n8n + Google Gemini)
+
+An AI-powered lead qualification workflow built with **n8n** and **Google Gemini**. Every new lead from a contact form is scored automatically, logged to Google Sheets, answered with a personal reply, and, if it's a hot lead, sent straight to the business owner's inbox.
+
+![Workflow screenshot](workflow.png)
+
+## What it does
+
+1. **Contact form**: a built-in n8n form collects name, email, company, budget and project details.
+2. **AI scoring**: Google Gemini reads each lead and returns:
+   - a score: `hot`, `warm` or `cold`
+   - a one-line reason for the score
+   - a one-line summary of what the lead wants
+   - a personalized reply email
+3. **Google Sheets log**: every lead is saved as a new row, so nothing gets lost.
+4. **Instant auto-reply**: the lead receives a personal, AI-written reply within seconds.
+5. **Hot lead alert**: hot leads trigger an alert email to the owner with the summary and budget.
+
+## Why businesses use this
+
+- Replies to every lead in seconds, even at night or on weekends
+- Sales teams spend time only on the leads most likely to buy
+- Every lead is tracked in one simple spreadsheet
+- Runs on free tools: n8n (self-hosted), Gemini's free tier, Google Sheets and Gmail
+
+## Tech stack
+
+| Tool | Role |
+|---|---|
+| n8n | Workflow automation |
+| Google Gemini (`gemini-3.8-flash`) | Lead scoring and reply writing |
+| Google Sheets | Lead database |
+| Gmail | Auto-replies and alerts |
+
+## Setup
+
+### 1. Import the workflow
+In n8n, create a new workflow, open the **⋯ menu → Import from File**, and select `ai-lead-qualifier.json`.
+
+### 2. Create the Google Sheet
+Create a sheet with these headers in **row 1**:
+
+```
+Date | Name | Email | Company | Budget | Message | Score | Reason | Summary
+```
+
+### 3. Connect credentials
+- **Google Gemini**: create a free API key at [Google AI Studio](https://aistudio.google.com) and add it to the Gemini node.
+- **Google Sheets and Gmail**:
+  - n8n Cloud: click **Sign in with Google**.
+  - Self-hosted n8n: create an OAuth client in Google Cloud Console (Web application), add `http://localhost:5678/rest/oauth2-credential/callback` as a redirect URI, enable the Gmail, Google Sheets and Google Drive APIs, and paste the Client ID and Secret into n8n.
+
+> Tip: check that there are no extra spaces at the end of pasted keys and IDs.
+
+### 4. Configure
+- **Log Lead in Sheet**: select your sheet.
+- **Alert Owner**: replace `you@example.com` with the owner's email.
+
+### 5. Test
+Click **Test workflow**, submit the form with a large budget and a real project description, and check the sheet and inbox.
+
+## Customization ideas
+
+- Swap Google Sheets for a CRM (HubSpot, Airtable, GoHighLevel)
+- Send hot lead alerts to Slack or WhatsApp
+- Add a calendar booking link to the auto-reply
+- Adjust the scoring rules in the AI prompt to fit any industry
+
+## Need a custom automation?
+
+I build AI automations for businesses: lead handling, reporting, data cleanup and workflow integrations.
+
+- **LinkedIn:** [Priyanshu Suryawanshi](https://www.linkedin.com/in/priyanshu-suryawanshi-6875622aa)
+- **X:** [@priyaanshhh22](https://x.com/priyaanshhh22)
+
+If this project helped you, consider giving it a star.
