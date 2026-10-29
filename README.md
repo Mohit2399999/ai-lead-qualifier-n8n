@@ -2,7 +2,8 @@
 
 An AI-powered lead qualification workflow built with **n8n** and **Google Gemini**. Every new lead from a contact form is scored automatically, logged to Google Sheets, answered with a personal reply, and, if it's a hot lead, sent straight to the business owner's inbox.
 
-![Workflow screenshot](workflow.png)
+![<img width="1615" height="749" alt="image" src="https://github.com/user-attachments/assets/eae49174-89ae-4c4c-9135-62291daf907d" />
+](workflow.png)
 
 ## What it does
 
